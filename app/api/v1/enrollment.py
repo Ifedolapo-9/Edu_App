@@ -10,7 +10,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/", response_model=EnrollmentRead, status_code=status.HTTP_201_CREATED)
+@router.post("/enrollments", response_model=EnrollmentRead, status_code=status.HTTP_201_CREATED)
 def student_enroll(
     enrollment_in: EnrollmentCreate,
     db: Session = Depends(get_db),
@@ -21,8 +21,8 @@ def student_enroll(
         enrollment_in.user_id,
         enrollment_in.course_id
     )
-
-    if not enrollment:
+    
+    if enrollment is None:
         raise HTTPException(status_code=400, detail="Already enrolled")
 
     db.add(enrollment)
@@ -59,7 +59,7 @@ def course_enrollments(
         course_id
     )
 
-    if not enrollment:
+    if enrollment is None:
         raise HTTPException(status_code=400, detail="Already enrolled")
 
     return enrollment
@@ -77,7 +77,9 @@ def student_deregister(
         course_id
     )
 
-    if not enrollment:
+    if enrollment is None:
         raise HTTPException(status_code=400, detail="Not Registered or already deregistered")
 
     return {"message": "Successfully deregistered"}
+
+
