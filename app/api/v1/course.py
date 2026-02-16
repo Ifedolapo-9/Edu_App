@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.schemas.course import CourseCreate, CourseRead, CourseUpdate
+from app.schemas.course import CourseCreate, CourseRead, CourseUpdate, CourseStatusUpdate
 from app.api.deps import get_db, get_current_active_user, get_current_active_admin
 from app.models.course import Course
 from app.services.course import CourseService
@@ -8,7 +8,7 @@ from app.services.course import CourseService
 
 router = APIRouter()
 
-@router.post("/create_course", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
 def create_course(
     course_in: CourseCreate,
     db: Session = Depends(get_db),
@@ -20,7 +20,7 @@ def create_course(
     db.refresh(course)
     return course
 
-@router.get("/all", response_model=list[CourseRead])
+@router.get("/", response_model=list[CourseRead])
 def list_courses(
     limit: int = 10,
     skip: int = 0,
@@ -68,15 +68,15 @@ def update_course_by_id(
             )
     return course
 
-@router.patch("/{course_id}/activate/{is_activate}", response_model=CourseRead)
+@router.patch("/{course_id}", response_model=CourseRead)
 #diff function name than what is defined in services
 def activate_or_deactivate_course(
     course_id: int,
-    is_active: bool,
+    status_update: CourseStatusUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_active_admin)
 ):
-    course = CourseService.course_status(db, course_id, is_active)
+    course = CourseService.course_status(db, course_id, status_update.is_active)
 
 
     if not course:

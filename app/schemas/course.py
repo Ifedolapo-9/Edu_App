@@ -24,3 +24,5 @@ class CourseUpdate(CourseBase):
     code: Optional [int] = None
     capacity: Optional [int] =  None
  
+class CourseStatusUpdate(BaseModel):
+    is_active: bool

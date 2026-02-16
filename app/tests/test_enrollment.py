@@ -1,208 +1,163 @@
-def test_enroll_course(client):
-
-    # 1️⃣ Create admin
+def create_admin_and_get_token(client):
     client.post(
         "/api/v1/signup",
         json={
             "email": "admin@example.com",
             "password": "secret123",
             "name": "Admin User",
-            "role": "admin"
+            "role": "admin",
         },
     )
 
-    admin_login = client.post(
+    response = client.post(
         "/api/v1/login",
         data={"username": "admin@example.com", "password": "secret123"},
     )
 
-    admin_token = admin_login.json()["access_token"]
+    return response.json()["access_token"]
 
-    # 2️⃣ Admin creates course
-    course_response = client.post(
-        "/api/v1/courses",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json={
-            "title": "Math 101",
-            "code": 101,
-            "capacity": 10,
-            "is_active": True,
-        },
-    )
 
-    assert course_response.status_code == 200
-    course_id = course_response.json()["id"]
-
-    # 3️⃣ Create student
+def create_student_and_get_token(client):
     client.post(
         "/api/v1/signup",
         json={
             "email": "student@example.com",
             "password": "secret123",
             "name": "Student User",
-            "role": "student"
+            "role": "student",
         },
     )
 
-    student_login = client.post(
+    response = client.post(
         "/api/v1/login",
         data={"username": "student@example.com", "password": "secret123"},
     )
 
-    student_token = student_login.json()["access_token"]
+    return response.json()["access_token"]
 
-    # 4️⃣ Student enrolls
+def create_course(client, admin_token):
     response = client.post(
-        "/api/v1/enrollments",
-        headers={"Authorization": f"Bearer {student_token}"},
-        json={
-            "course_id": course_id
-        },
-    )
-
-    assert response.status_code == 201
-
-    data = response.json()
-
-    assert data["course_id"] == course_id
-    assert "id" in data
-    assert "created_at" in data
-
-def test_list_enrollments_admin(client):
-
-    # Create admin
-    client.post(
-        "/api/v1/signup",
-        json={
-            "email": "admin@test.com",
-            "password": "secret123",
-            "name": "Admin",
-            "role": "admin",
-        },
-    )
-
-    admin_login = client.post(
-        "/api/v1/login",
-        data={"username": "admin@test.com", "password": "secret123"},
-    )
-    admin_token = admin_login.json()["access_token"]
-
-    # Call endpoint (no enrollments yet)
-    response = client.get(
-        "/api/v1/enrollments",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-
-def test_course_enrollments_admin(client):
-
-    # Create admin
-    client.post(
-        "/api/v1/signup",
-        json={
-            "email": "admin2@test.com",
-            "password": "secret123",
-            "name": "Admin2",
-            "role": "admin",
-        },
-    )
-
-    admin_login = client.post(
-        "/api/v1/login",
-        data={"username": "admin2@test.com", "password": "secret123"},
-    )
-    admin_token = admin_login.json()["access_token"]
-
-    # Create course
-    course_response = client.post(
         "/api/v1/courses",
         headers={"Authorization": f"Bearer {admin_token}"},
         json={
-            "title": "Physics",
-            "code": 201,
-            "capacity": 5,
-            "is_active": True,
-        },
-    )
-
-    course_id = course_response.json()["id"]
-
-    # Call course enrollment list
-    response = client.get(
-        f"/api/v1/enrollments/course/{course_id}",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-
-    # Since no one enrolled yet, your service may return empty list
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-
-def test_student_deregister(client):
-
-    # Create admin
-    client.post(
-        "/api/v1/signup",
-        json={
-            "email": "admin3@test.com",
-            "password": "secret123",
-            "name": "Admin3",
-            "role": "admin",
-        },
-    )
-
-    admin_login = client.post(
-        "/api/v1/login",
-        data={"username": "admin3@test.com", "password": "secret123"},
-    )
-    admin_token = admin_login.json()["access_token"]
-
-    # Create course
-    course_response = client.post(
-        "/api/v1/courses",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json={
-            "title": "Biology",
-            "code": 301,
+            "title": "Test Course",
+            "code": 999,
             "capacity": 10,
             "is_active": True,
         },
     )
 
-    course_id = course_response.json()["id"]
+    return response.json()["id"]
 
-    # Create student
-    client.post(
-        "/api/v1/signup",
-        json={
-            "email": "student@test.com",
-            "password": "secret123",
-            "name": "Student",
-            "role": "student",
-        },
-    )
+def test_student_enroll(client):
+    admin_token = create_admin_and_get_token(client)
+    student_token = create_student_and_get_token(client)
 
-    student_login = client.post(
-        "/api/v1/login",
-        data={"username": "student@test.com", "password": "secret123"},
-    )
-    student_token = student_login.json()["access_token"]
+    course_id = create_course(client, admin_token)
 
-    # Enroll student
-    enroll_response = client.post(
+    response = client.post(
         "/api/v1/enrollments",
         headers={"Authorization": f"Bearer {student_token}"},
         json={"course_id": course_id},
     )
 
-    assert enroll_response.status_code == 201
+    assert response.status_code == 201
+    data = response.json()
 
-    # Deregister
-    response = client.delete(
-        f"/api/v1/enrollments/{course_id}",
+    assert data["course_id"] == course_id
+    assert "id" in data
+
+def test_student_cannot_enroll_twice(client):
+    admin_token = create_admin_and_get_token(client)
+    student_token = create_student_and_get_token(client)
+
+    course_id = create_course(client, admin_token)
+
+    client.post(
+        "/api/v1/enrollments",
         headers={"Authorization": f"Bearer {student_token}"},
+        json={"course_id": course_id},
+    )
+
+    response = client.post(
+        "/api/v1/enrollments",
+        headers={"Authorization": f"Bearer {student_token}"},
+        json={"course_id": course_id},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Already enrolled"
+
+def test_admin_list_enrollments(client):
+    admin_token = create_admin_and_get_token(client)
+    student_token = create_student_and_get_token(client)
+
+    course_id = create_course(client, admin_token)
+
+    client.post(
+        "/api/v1/enrollments",
+        headers={"Authorization": f"Bearer {student_token}"},
+        json={"course_id": course_id},
+    )
+
+    response = client.get(
+        "/api/v1/enrollments",
+        headers={"Authorization": f"Bearer {admin_token}"},
     )
 
     assert response.status_code == 200
-    assert response.json()["message"] == "Successfully deregistered"
+    assert len(response.json()) > 0
+
+def test_admin_view_enrollments_by_course(client):
+    admin_token = create_admin_and_get_token(client)
+    student_token = create_student_and_get_token(client)
+
+    course_id = create_course(client, admin_token)
+
+    client.post(
+        "/api/v1/enrollments",
+        headers={"Authorization": f"Bearer {student_token}"},
+        json={"course_id": course_id},
+    )
+
+    response = client.get(
+        f"/api/v1/enrollments/by-course/{course_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["course_id"] == course_id
+
+def test_student_deregister(client):
+    admin_token = create_admin_and_get_token(client)
+    student_token = create_student_and_get_token(client)
+
+    course_id = create_course(client, admin_token)
+
+    client.post(
+        "/api/v1/enrollments",
+        headers={"Authorization": f"Bearer {student_token}"},
+        json={"course_id": course_id},
+    )
+
+    response = client.delete(
+        f"/api/v1/enrollments/course/{course_id}",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+
+    assert response.status_code == 204
+
+def test_student_cannot_deregister_without_enrollment(client):
+    admin_token = create_admin_and_get_token(client)
+    student_token = create_student_and_get_token(client)
+
+    course_id = create_course(client, admin_token)
+
+    response = client.delete(
+        f"/api/v1/enrollments/course/{course_id}",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+
+    assert response.status_code == 400
+    assert "Not Registered" in response.json()["detail"]

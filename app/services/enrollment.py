@@ -44,7 +44,11 @@ class EnrollmentService:
 
         enrollment = Enrollment(user_id=user_id, course_id=course_id)
 
+        db_session.add(enrollment)
+        db_session.commit()
+        db_session.refresh(enrollment)
         return enrollment
+
     
     @staticmethod
     def deregister_student(db_session: Session, user_id: int, course_id: int):

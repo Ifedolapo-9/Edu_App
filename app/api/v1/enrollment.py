@@ -10,7 +10,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/enrollments", response_model=EnrollmentRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=EnrollmentRead, status_code=status.HTTP_201_CREATED)
 def student_enroll(
     enrollment_in: EnrollmentCreate,
     db: Session = Depends(get_db),
@@ -18,17 +18,15 @@ def student_enroll(
 ):
     enrollment = EnrollmentService.enroll_student(
         db,
-        enrollment_in.user_id,
+        current_user.id,
         enrollment_in.course_id
     )
-    
+
     if enrollment is None:
         raise HTTPException(status_code=400, detail="Already enrolled")
 
-    db.add(enrollment)
-    db.commit()
-    db.refresh(enrollment)
     return enrollment
+
 
 
 @router.get("/", response_model=list[EnrollmentRead])
@@ -48,7 +46,7 @@ def list_enrollments(
     return enrollments
 
 
-@router.get("/course/{course_id}", response_model=list[EnrollmentRead], status_code=status.HTTP_200_OK)
+@router.get("/by-course/{course_id}", response_model=list[EnrollmentRead], status_code=status.HTTP_200_OK)
 def course_enrollments(
     course_id: int,
     db: Session = Depends(get_db),
@@ -60,11 +58,11 @@ def course_enrollments(
     )
 
     if enrollment is None:
-        raise HTTPException(status_code=400, detail="Already enrolled")
+        raise HTTPException(status_code=400, detail="No Enrollment")
 
     return enrollment
 
-@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
+@router.delete("/course/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
 def student_deregister(
     course_id: int,
     db: Session = Depends(get_db),
