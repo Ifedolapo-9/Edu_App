@@ -1,6 +1,3 @@
-import os
-print("DATABASE_URL =", os.getenv("DATABASE_URL"))
-
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):

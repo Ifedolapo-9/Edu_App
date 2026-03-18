@@ -39,3 +39,34 @@ def test_user_profile(client):
     assert data["role"] == "student"
     assert data["name"] == "Test User"
 
+
+def test_admin_user_profile(client):
+    signup = client.post(
+        "/api/v1/signup",
+        json={
+            "email": "admin@example.com",
+            "password": "secret123",
+            "name": "Admin User",
+            "role": "admin",
+        },
+    )
+    assert signup.status_code == 201
+
+    response = client.post(
+        "/api/v1/login",
+        data={"username": "admin@example.com", "password": "secret123"},
+    )
+    assert response.status_code == 200
+    token_data = response.json()
+
+    access_token = token_data["access_token"]
+    profile = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert profile.status_code == 200
+    data = profile.json()
+    assert data["email"] == "admin@example.com"
+    assert data["role"] == "admin"
+
